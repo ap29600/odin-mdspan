@@ -74,7 +74,7 @@ reshape :: proc (span: $S/Span($E,$R), shape: [$L]int, allocator := context.allo
 	return result
 }
 
-ravel_view :: proc (span: $S/Span($E,$R)) -> Span(E,1) {
-	size := 1; for i in 0 ..< R {old_size *= span.shape[i]}
-	return Span(E,1){span.ravel, [1]int{size}}
+ravel_view :: proc (span: $S/Span($E,$R)) -> []E {
+	size := 1; for i in 0 ..< R {size *= span.shape[i]}
+	return span.ravel[:size]
 }
