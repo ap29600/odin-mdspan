@@ -1,7 +1,9 @@
 package mdspan
 
+//TODO: remove dependency on "core:os"
 import "core:os"
 import "core:mem"
+//TODO: remove dependency on "core:slice"
 import "core:slice"
 
 transpose_monadic :: proc(span:$S/Span($E,$R),allocator:=context.allocator) -> Span(E,R) {
@@ -18,6 +20,7 @@ transpose_dyadic :: proc (span: $S/Span($E,$R), perm: [R]int, alloc := context.a
 
 transpose :: proc {transpose_monadic, transpose_dyadic}
 
+// TODO: do this without allocations
 transpose_inplace :: proc (span: ^$S/Span($E, $R), perm: [R]int, alloc := context.allocator) {
 	bits := [dynamic]u64{}
 	defer delete_dynamic_array(bits)
