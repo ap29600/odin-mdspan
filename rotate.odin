@@ -4,7 +4,7 @@ import "core:mem"
 import "core:slice"
 
 @private
-collapse_dimensions_exclusive :: proc (dims: [$N]int, axis: int) -> (leading, middle, trailing: int) {
+collapse_dimensions_exclusive :: proc (dims: [$N]int, axis: int) -> (leading, middle, trailing: int) #no_bounds_check {
 	leading = 1
 	middle = axis < N ? dims[axis] : 1
 	trailing = 1
@@ -16,7 +16,7 @@ collapse_dimensions_exclusive :: proc (dims: [$N]int, axis: int) -> (leading, mi
 }
 
 @private
-collapse_dimensions_inclusive :: proc (dims: [$N]int, axis: int) -> (leading, trailing: int) {
+collapse_dimensions_inclusive :: proc (dims: [$N]int, axis: int) -> (leading, trailing: int) #no_bounds_check {
 	leading = 1
 	trailing = 1
 	when N > 0 {
@@ -77,7 +77,7 @@ ptr_rotate :: proc (mid: rawptr, left, right: int) {
 }
 
 
-rotate_inplace_multi :: proc (span: $S/^Span($E,$R), shifts: $T/Span(int,$L), axis := 0) where L < R {
+rotate_inplace_multi :: proc (span: $S/^Span($E,$R), shifts: $T/Span(int,$L), axis := 0) where L < R #no_bounds_check {
 	axis := axis %% R
 
 	// TODO: validate that the shapes are compatible

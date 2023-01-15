@@ -1,7 +1,9 @@
 package mdspan
 
+import "core:fmt"
 import "core:mem"
 import "core:os"
+import "core:slice"
 
 /*
 	A R-dimensional array of elements of type E.
@@ -22,6 +24,49 @@ array :: proc(values: $P/[]$E) -> Span(E,1) {
 	return transmute(Span(E,1))values
 }
 
+from_slice :: proc(data: $P/[]$E, shape: [$R]int) -> (result: Span(E,R)) {
+	shape := shape
+
+	// look for a fill dimension
+	p := 0
+	ok := false
+	for i in 0 ..< R {
+		if shape[i] < 0 {
+			if ok {
+				fmt.println("multiple fill elements in shape")
+				os.exit(1)
+			}
+			ok = true
+			p = i
+		}
+	}
+
+	if ok {
+		shape[p] = len(data)
+		for i in 0 ..< R {
+			if i != p {
+				// TODO: error handling
+				if shape[p] % shape[i] != 0 {
+					fmt.println("shape is not compatible with length")
+					os.exit(1)
+				}
+				shape[p] /= shape[i]
+			}
+		}
+	} else {
+		size := 1
+		for i in 0 ..<R { size *= shape[i] }
+		if size != len(data) {
+			fmt.println("shape is not compatible with length")
+			os.exit(1)
+		}
+	}
+
+	result.ravel = raw_data(data)
+	result.shape = shape
+	return
+}
+
 delete :: proc (span: $S/Span($E,$R), allocator := context.allocator) {
 	mem.free(span.ravel, allocator)
 }
@@ -34,20 +79,29 @@ clone :: proc ( span: $S/Span($E,$R), allocator := context.allocator,) -> (resul
 	return
 }
 
-index :: proc (span: $S/Span($E,$R), index: [R]int) -> (elem: ^E,  ok: bool) {
+index :: proc (span: $S/Span($E,$R), idx: [R]int) -> ^E {
 	when R == 0 {
 		return span.ravel, true
 	} else {
 		flat_index := 0
 		stride := 1
-		for i in 1 ..= R {
-			if index[R - i] < 0 || index[R - i] >= span.shape[R - i] {
-				return nil, false
+		
+		when R > 0 {
+			when ODIN_DEBUG {
+				for i in 0 ..< R {
+					if idx[i] < 0 || idx[i] > span.shape[i] {
+						os.exit(1);
+					}
+				}
 			}
-			flat_index += stride * index[R - i]
-			stride *= span.shape[R - i]
+
+			for i in 1 ..= R {
+				flat_index += stride * idx[R - i]
+				stride *= span.shape[R - i]
+			}
 		}
-		return span.ravel[flat_index:], true
+
+		return span.ravel[flat_index:]
 	}
 }
 

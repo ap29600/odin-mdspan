@@ -3,6 +3,23 @@ package mdspan
 import "core:mem"
 import "core:intrinsics"
 
+alternating_sum :: proc (
+	$Rank: int,
+	span: $S/Span($E,Rank),
+	axis := 0,
+	allocator := context.allocator,
+) -> (result: Span(E, Rank - 1))
+	where Rank > 0, intrinsics.type_is_numeric(E) {
+		return reduce_proc(
+			Rank,
+			span,
+			E(0),
+			proc(a, b: E) -> E { return a-b },
+			axis,
+			allocator,
+		)
+}
+
 sum_reduce :: proc (
 	$Rank: int,
 	span: $S/Span($E,Rank),
@@ -46,7 +63,7 @@ reduce_proc :: proc (
 	allocator := context.allocator,
 ) -> (result: Span(E,Rank-1))
 	where Rank > 0 #no_bounds_check {
-		assert(0 <= axis && axis < Rank)
+		axis := axis %% Rank
 		leading  := 1;
 		for i in 0 ..< axis {
 			result.shape[i] = span.shape[i]
@@ -63,10 +80,11 @@ reduce_proc :: proc (
 		assert(leading >= 1 && reducing >= 1 && trailing >= 1)
 		for i in 0 ..< leading {
 			for k in 0 ..< reducing {
+				k := reducing-k-1
 				from := span.ravel[(i*reducing+k)*trailing:]
 				to   := result.ravel[i*trailing:]
 				for j in 0 ..< trailing {
-					to[j] = p(to[j], from[j])
+					to[j] = p(from[j], to[j])
 				}
 			}
 		}
