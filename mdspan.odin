@@ -5,66 +5,9 @@ import "core:mem"
 import "core:os"
 import "core:slice"
 
-/*
-	A R-dimensional array of elements of type E.
-	Note that:
-	 - `MDSpan(E, 0)` may be transmuted to and from `^E`
-	 - `MDSpan(E, 1)` may be transmuted to and from `[]E`
-*/
 Span :: struct ($E: typeid, $R: int) {
 	ravel: [^]E,
 	shape: [R]int,
-}
-
-scalar :: proc(value: $P/^$E) -> Span(E,0) {
-	return transmute(Span(E,0))value
-}
-
-array :: proc(values: $P/[]$E) -> Span(E,1) {
-	return transmute(Span(E,1))values
-}
-
-from_slice :: proc(data: $P/[]$E, shape: [$R]int) -> (result: Span(E,R)) {
-	shape := shape
-
-	// look for a fill dimension
-	p := 0
-	ok := false
-	for i in 0 ..< R {
-		if shape[i] < 0 {
-			if ok {
-				fmt.println("multiple fill elements in shape")
-				os.exit(1)
-			}
-			ok = true
-			p = i
-		}
-	}
-
-	if ok {
-		shape[p] = len(data)
-		for i in 0 ..< R {
-			if i != p {
-				// TODO: error handling
-				if shape[p] % shape[i] != 0 {
-					fmt.println("shape is not compatible with length")
-					os.exit(1)
-				}
-				shape[p] /= shape[i]
-			}
-		}
-	} else {
-		size := 1
-		for i in 0 ..<R { size *= shape[i] }
-		if size != len(data) {
-			fmt.println("shape is not compatible with length")
-			os.exit(1)
-		}
-	}
-
-	result.ravel = raw_data(data)
-	result.shape = shape
-	return
 }
 
 delete :: proc (span: $S/Span($E,$R), allocator := context.allocator) {
@@ -111,7 +54,7 @@ reshape :: proc (span: $S/Span($E,$R), shape: [$L]int, allocator := context.allo
 	assert(old_size > 0)
 
 	result := Span(E,L){
-		auto_cast mem.alloc(size = new_size * size_of(E), allocator = allocator),
+		cast([^]E) mem.alloc(size = new_size * size_of(E), allocator = allocator),
 		shape,
 	}
 	mem.copy_non_overlapping(result.ravel, span.ravel, min(old_size, new_size) * size_of(E))
@@ -125,9 +68,4 @@ reshape :: proc (span: $S/Span($E,$R), shape: [$L]int, allocator := context.allo
 		old_size += min(old_size, new_size - old_size)
 	}
 	return result
-}
-
-ravel_view :: proc (span: $S/Span($E,$R)) -> []E {
-	size := 1; for i in 0 ..< R {size *= span.shape[i]}
-	return span.ravel[:size]
 }
