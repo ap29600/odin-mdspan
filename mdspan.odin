@@ -10,7 +10,15 @@ Span :: struct ($E: typeid, $R: int) {
 	shape: [R]int,
 }
 
-delete :: proc (span: $S/Span($E,$R), allocator := context.allocator) {
+create :: proc ($E: typeid, shape: [$R]int, allocator := context.allocator) -> (result: Span(E, R)) {
+	size := size_of(E)
+	for d in shape { size *= d }
+	result.shape = shape
+	result.ravel = cast([^]E)mem.alloc(size = size, allocator = allocator)
+	return
+}
+
+destroy :: proc (span: $S/Span($E,$R), allocator := context.allocator) {
 	mem.free(span.ravel, allocator)
 }
 
