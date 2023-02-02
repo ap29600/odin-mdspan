@@ -1,86 +1,20 @@
 package mdspan
 
 import "core:mem"
-import "core:slice"
 
-@private
-collapse_dimensions_exclusive :: proc (dims: [$N]int, axis: int) -> (leading, middle, trailing: int) #no_bounds_check {
-	leading = 1
-	middle = axis < N ? dims[axis] : 1
-	trailing = 1
-	for i in 0 ..< N {
-		leading  *= i < axis ? dims[i] : 1
-		trailing *= i > axis ? dims[i] : 1
-	}
-	return
-}
-
-@private
-collapse_dimensions_inclusive :: proc (dims: [$N]int, axis: int) -> (leading, trailing: int) #no_bounds_check {
-	leading = 1
-	trailing = 1
-	when N > 0 {
-		for i in 0 ..< N {
-			leading  *= i < axis ? dims[i] : 1
-			trailing *= i >= axis ? dims[i] : 1
-		}
-	}
-	return
-}
-
-@private
-ptr_swap_strided :: proc (a, b: rawptr, count, size, stride: uintptr) {
-	for i in 0 ..< count {
-		slice.ptr_swap_non_overlapping(
-			rawptr(uintptr(a) + i * stride),
-			rawptr(uintptr(b) + i * stride),
-			int(size),
-		)
-	}
-}
-
-// TODO: don't use pointer arithmetic
-@private
-ptr_rotate_strided :: proc (mid: rawptr, left, right: int, size, stride: int) {
-	mid := mid
-	left, right := uintptr(left), uintptr(right)
-	size, stride := uintptr(size), uintptr(stride)
-	for left > 0 && right > 0 {
-		if left > right {
-			ptr_swap_strided(rawptr(uintptr(mid) - right * stride), mid, right, size, stride)
-			left -= right
-			mid  = rawptr(uintptr(mid) - right * stride)
-		} else {
-			ptr_swap_strided(rawptr(uintptr(mid) - left * stride), mid, left, size, stride)
-			right -= left
-			mid  = rawptr(uintptr(mid) + left * stride)
-		}
-	}
-}
-
-// TODO: don't use pointer arithmetic
-@private
-ptr_rotate :: proc (mid: rawptr, left, right: int) {
-	mid := mid
-	left, right := uintptr(left), uintptr(right)
-	for left > 0 && right > 0 {
-		if left > right {
-			slice.ptr_swap_non_overlapping(rawptr(uintptr(mid) - right), mid, int(right))
-			left -= right
-			mid  = rawptr(uintptr(mid) - right)
-		} else {
-			slice.ptr_swap_non_overlapping(rawptr(uintptr(mid) - left), mid, int(left))
-			right -= left
-			mid  = rawptr(uintptr(mid) + left)
-		}
-	}
-}
-
-
-rotate_inplace_multi :: proc (span: $S/^Span($E,$R), shifts: $T/Span(int,$L), axis := 0) where L < R #no_bounds_check {
+rotate_inplace_multi :: proc (span: $S/^Span($E,$R), shifts: $T/Span(int,$L), axis := 0) -> (ok: bool) where L < R {
 	axis := axis %% R
 
-	// TODO: validate that the shapes are compatible
+	when L > 0 {
+		// check that `shifts` has the right shape
+		for i in 0 ..< L {
+			if span.shape[i + int(axis <= i)] != shifts.shape[i] {
+				return false
+			}
+		}
+	}
+
+	// TODO: this whole logic is a mess and needs a rationalization
 	leading, middle, trailing := collapse_dimensions_exclusive(span.shape, axis)
 	leading_shifts, trailing_shifts := collapse_dimensions_inclusive(shifts.shape, axis)
 
@@ -138,5 +72,4 @@ rotate_one :: proc (
 	return rotate_multi(span, transmute(Span(int, 0))&shift, axis)
 }
 
-rotate :: proc { rotate_multi, rotate_one }
-rotate_inplace :: proc { rotate_inplace_multi, rotate_inplace_one }
+rotate :: proc { rotate_multi, rotate_one, rotate_inplace_multi, rotate_inplace_one }

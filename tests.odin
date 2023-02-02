@@ -47,6 +47,37 @@ to_slice_is_inverse_of_from_slice :: proc(t: ^test.T) {
 }
 
 @test
+out_of_place_transposition_works :: proc (t: ^test.T) {
+	data := [4 * 5 * 7]int{}
+	for it, i in &data {it = i}
+	s := from_slice(data[:], [?]int{4, 5, 7})
+
+	// axis reversal
+	f := transpose(s, context.temp_allocator)
+	for i in 0 ..< 4 do for j in 0 ..< 5 do for k in 0 ..< 7 {
+		idx := [?]int{i, j, k}
+		test.expect(
+			t,
+			index(s, idx)^ == index(f, idx.zyx)^,
+		)
+	}
+
+	// a custom permutation
+	gperm := [?]int{0, 2, 1}
+	g := transpose(s, gperm, context.temp_allocator)
+	for i in 0 ..< 4 do for j in 0 ..< 5 do for k in 0 ..< 7 {
+		idx := [?]int{i, j, k}
+		test.expect(
+			t,
+			index(s, idx)^ == index(
+				g,
+				[?]int{idx[gperm[0]], idx[gperm[1]], idx[gperm[2]]},
+			)^,
+		)
+	}
+}
+
+@test
 matrix_product_identity_is_neutral :: proc(t: ^test.T) {
 	id_data := [3*3]int{1, 0, 0, 0, 1, 0, 0, 0, 1}
 	id := from_slice(id_data[:], [?]int{3, 3})
