@@ -32,7 +32,10 @@ ergonomic first, and efficient second.
 
 ## Types
 
-### `Span(T, R)`
+### Span
+```odin
+Span :: struct($T, $R)
+```
 the primary structure offered by the library is a generic multi dimensional
 unstrided slice. It has the following fields:
 - `ravel : [^]T`: a pointer to the data.
@@ -53,13 +56,22 @@ in the `fmt` library can only be registered for a fully specialized type.
 
 ## Procedures
 
-### `scalar :: proc (element: ^$T) -> Span(T, 0)`
+### scalar
+```odin
+scalar :: proc (element: ^$T) -> Span(T, 0)
+```
 Equivalent to `from_slice(slice.from_ptr(element, 1), [0]int{})`
 
-### `array :: proc(element: []T) -> Span(T, 1)`
+### array
+```odin
+array :: proc(element: []T) -> Span(T, 1)
+```
 Equivalent to `from_slice(elements, [1]int{-1})`
 
-### `from_slice :: proc (elements: []$T, shape: [$R]int) -> Span(T, R)`
+### from_slice
+```odin
+from_slice :: proc (elements: []$T, shape: [$R]int) -> Span(T, R)
+```
 Makes a `Span` from the elements in the provided slice, with the specified shape.
 The following preconditions must hold:
 - at most one of the elements of `shape` is negative. If present, this is called a
@@ -78,8 +90,14 @@ s2 := mdspan.from_slice(elements, [?]int{4, 3})
 s1 := mdspan.from_slice(elements, [?]int{-1, 3})
 ```
 
-### `index :: proc(span: Span($T,$R), idx: [R]int) -> ^E`
+### index
+```odin
+index :: proc(span: Span($T,$R), idx: [R]int) -> ^E
+```
 Produce a pointer to the element at the given index.
 
-### `ravel_view :: proc(span: Span($T, $R)) -> []T`
+### ravel_view
+```odin
+ravel_view :: proc(span: Span($T, $R)) -> []T
+```
 Return a view of the elements of the span, discarding shape information.
