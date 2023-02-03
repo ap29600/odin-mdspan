@@ -4,6 +4,7 @@ package mdspan
 import test "core:testing"
 import "core:math/rand"
 import "core:slice"
+import "core:fmt"
 
 @test
 scalar_construction :: proc (t: ^test.T) {
@@ -124,6 +125,74 @@ rotations_are_permutations :: proc (t: ^test.T) {
 	for i in 0 ..< 4 * 7 * 10 {
 		_, ok := slice.linear_search(data[:], i)
 		test.expect(t, ok)
+	}
+}
+
+@test
+rotate_with_bias :: proc (t: ^test.T) {
+	initial_ravel := []int{
+		0, 1,
+		2, 3,
+	// ------
+		4, 5,
+		6, 7,
+	}
+	s := from_slice(initial_ravel, [?]int{2, 2, 2})
+
+	{
+		// rotates cells (axis = 1), the leading axis of `shifts` is matched to the
+		// second free axis (which is the third axis) of `span` (bias = 1)
+		f, ok := rotate(span = s, shifts = array([]int{0, 1}), axis = 1, bias = 1)
+		test.expect(t, ok)
+		defer destroy(f)
+		elems := to_slice(f)
+		expected_ravel := []int{
+			0, 3,
+			2, 1,
+		// ------
+			4, 7,
+			6, 5,
+		}
+		for it, i in elems {
+			test.expect_value(t, it, expected_ravel[i])
+		}
+	}
+
+	{
+		// rotates rows (axis = 2), the leading axis of `shifts` is matched to the
+		// second free axis (which is the second axis) of `span` (bias = 1)
+		f, ok := rotate(span = s, shifts = array([]int{0, 1}), axis = 2, bias = 1)
+		test.expect(t, ok)
+		defer destroy(f)
+		elems := to_slice(f)
+		expected_ravel := []int{
+			0, 1,
+			3, 2,
+		// ------
+			4, 5,
+			7, 6,
+		}
+		for it, i in elems {
+			test.expect_value(t, it, expected_ravel[i])
+		}
+	}
+
+	{
+		// rotates cubes (axis = 0), the leading axis of `shifts` is matched to the
+		// first free axis (which is the second axis) of `span` (bias = 0)
+		f := rotate(span = s, shifts = array([]int{0, 1}), axis = 0, bias = 0)
+		defer destroy(f)
+		elems := to_slice(f)
+		expected_ravel := []int{
+			0, 1,
+			6, 7,
+		// ------
+			4, 5,
+			2, 3,
+		}
+		for it, i in elems {
+			test.expect_value(t, it, expected_ravel[i])
+		}
 	}
 }
 
