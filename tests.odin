@@ -3,6 +3,7 @@ package mdspan
 
 import test "core:testing"
 import "core:math/rand"
+import "core:slice"
 
 @test
 scalar_construction :: proc (t: ^test.T) {
@@ -110,5 +111,31 @@ matrix_product_identity_is_neutral :: proc(t: ^test.T) {
 		for i in 0 ..< len(s) {
 			test.expect_value(t, s[i], r_data[i])
 		}
+	}
+}
+
+@test
+rotations_are_permutations :: proc (t: ^test.T) {
+	data := [4 * 7 * 10]int{}
+	for it, i in &data { it = i }
+	s := from_slice(data[:], [?]int{4, 7, 10})
+	rotate(&s, array([]int{1, 2, 3, 4, 5, 6, 7}), 0)
+	// test that all elements are still present
+	for i in 0 ..< 4 * 7 * 10 {
+		_, ok := slice.linear_search(data[:], i)
+		test.expect(t, ok)
+	}
+}
+
+@test
+transpositions_are_permutations :: proc (t: ^test.T) {
+	data := [4 * 7 * 10]int{}
+	for it, i in &data { it = i }
+	s := from_slice(data[:], [?]int{4, 7, 10})
+	transpose(&s, [?]int{1, 2, 0})
+	// test that all elements are still present
+	for i in 0 ..< 4 * 7 * 10 {
+		_, ok := slice.linear_search(data[:], i)
+		test.expect(t, ok)
 	}
 }
