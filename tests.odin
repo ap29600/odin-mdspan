@@ -180,8 +180,9 @@ rotate_with_bias :: proc (t: ^test.T) {
 	{
 		// rotates cubes (axis = 0), the leading axis of `shifts` is matched to the
 		// first free axis (which is the second axis) of `span` (bias = 0)
-		f := rotate(span = s, shifts = array([]int{0, 1}), axis = 0, bias = 0)
+		f, ok := rotate(span = s, shifts = array([]int{0, 1}), axis = 0, bias = 0)
 		defer destroy(f)
+		test.expect(t, ok)
 		elems := to_slice(f)
 		expected_ravel := []int{
 			0, 1,
@@ -206,5 +207,68 @@ transpositions_are_permutations :: proc (t: ^test.T) {
 	for i in 0 ..< 4 * 7 * 10 {
 		_, ok := slice.linear_search(data[:], i)
 		test.expect(t, ok)
+	}
+}
+
+@test
+basic_reshape_functionality :: proc (t: ^test.T) {
+	data := [5 * 14] int {}
+	for it, i in &data { it = i }
+	s := from_slice(data[:], [?]int{5, 14})
+
+	{
+		f, ok := reshape(s, [?]int{5, 2, -1}, context.temp_allocator)
+		test.expect(t, ok, "out of place reshape should succeed with compatible fill dimension")
+		test.expect(t, f.ravel != s.ravel, "out of place reshape makes a new allocation")
+		for it, i in to_slice(f) {
+			test.expect(t, it == i, "elements should match")
+		}
+	}
+
+	{
+		f, ok := reshape(s, [?]int{5, 3, -1}, context.temp_allocator)
+		test.expect(t, !ok, "out of place reshape should fail with incompatible fill dimension")
+	}
+
+	{
+		f, ok := reshape(s, [?]int{3, 7, 6}, context.temp_allocator)
+		test.expect(t, ok, "out of place reshape should always succeed with fixed shape")
+		test.expect(t, f.ravel != s.ravel, "out of place reshape makes a new allocation")
+		for it, i in to_slice(f) {
+			test.expect(t, it == i % (5 * 14), "elements should repeat")
+		}
+	}
+
+	{
+		f, ok := reshape(&s, [?]int{5, 2, -1})
+		test.expect(t, ok, "in place reshape should succeed with compatible fill dimension")
+		test.expect(t, f.ravel == s.ravel, "in place reshape shares the allocation")
+		for it, i in to_slice(f) {
+			test.expect(t, it == i, "elements should match")
+		}
+	}
+
+	{
+		f, ok := reshape(&s, [?]int{3, 7, 6})
+		test.expect(t, !ok, "in place reshape should fail with larger shape")
+	}
+
+	{
+		f, ok := reshape(&s, [?]int{3, 7, 3})
+		test.expect(t, ok, "in place reshape should succeed with smaller shape")
+		test.expect(t, f.ravel == s.ravel, "in place reshape shares the allocation")
+		for it, i in to_slice(f) {
+			test.expect(t, it == i, "elements should match")
+		}
+	}
+
+	{
+		empty, ok1 := reshape(&s, [?]int{0, 0})
+		test.expect(t, ok1, "can reshape into empty array")
+		f, ok2 := reshape(empty, [?]int {5, 4}, context.temp_allocator)
+		test.expect(t, ok2, "can reshape from empty array")
+		for it, i in to_slice(f) {
+			test.expect(t, it == 0, "elements are zero-initialized if no prototype is available")
+		}
 	}
 }
