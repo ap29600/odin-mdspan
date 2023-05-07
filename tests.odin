@@ -3,8 +3,10 @@ package mdspan
 
 import test "core:testing"
 import "core:math/rand"
+import "core:math"
 import "core:slice"
 import "core:fmt"
+import "core:mem"
 
 @test
 scalar_construction :: proc (t: ^test.T) {
@@ -270,5 +272,27 @@ basic_reshape_functionality :: proc (t: ^test.T) {
 		for it, i in to_slice(f) {
 			test.expect(t, it == 0, "elements are zero-initialized if no prototype is available")
 		}
+	}
+}
+
+@test
+sum_reductions_along_axes_commute :: proc (t: ^test.T) {
+	test_size := 1024
+	for cols in 1 ..< 1024 {
+		rows := test_size / cols
+	
+		data := make([]int, cols * rows); defer delete(data)
+		for elem in &data { elem = rand.int_max(1024) }
+		expect := math.sum(data)
+		
+		arr := from_slice(data, [?]int{rows, cols})
+
+		first  := reduce_add(arr, 0); defer destroy(first)
+		second := reduce_add(arr, 1); defer destroy(second)
+		first_second := reduce_add(first)
+		second_first := reduce_add(second)
+
+		test.expect(t, first_second == expect)
+		test.expect(t, second_first == expect)
 	}
 }
