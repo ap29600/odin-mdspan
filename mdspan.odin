@@ -30,23 +30,6 @@ clone :: proc ( span: $S/Span($E,$R), allocator := context.allocator,) -> (resul
 	return
 }
 
-index :: proc (span: $S/Span($E,$R), idx: [R]int) -> (result: ^E, ok: bool) where R > 0 #optional_ok {
-	flat_index := 0
-	stride := 1
-
-	#unroll for i in 0 ..< R {
-		if idx[i] < 0 || span.shape[i] < idx[i] {
-			return {}, false
-		}
-	}
-	#unroll for i in 1 ..= R {
-		flat_index += stride * idx[R - i]
-		stride *= span.shape[R - i]
-	}
-
-	return span.ravel[flat_index:], true
-}
-
 reshape_in_place :: proc(span: ^$S/Span($E,$R), shape: [$L]int) -> (result: Span(E, L), ok: bool) #optional_ok {
 	elems := to_slice(span^)
 	// handle fill dimension
